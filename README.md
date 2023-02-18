@@ -12,33 +12,35 @@ This addon is tested and compatible with Godot 4 Beta 17, and should continue to
 
 - The StateMachine object manages the State nodes below it, and can switch between them using the ```set_state```, ```push_state``` and ```pop_state``` methods.
 
-- States contain a few core functions:
-    1. _enter(msg)
-        When a State is switched to, it's ```_enter(msg)``` function is called. The optional ```msg``` 
-        parameter is a dictionary, which is passed along when switching to a new state. Use this to add 
-        further complexity to your behaviors.
+- States are where the actual behaviors are defined. They contain a few key functions which are called from the StateMachine:
 
-    2. _exit()
-        Similarly, _exit() is called when the State is being switched away from. Use this to cleanup any
-        lingering behaviors, signals, or variables you assigned during the State runtime.
+1. ```func _enter(msg):```
+    > When a State is switched to, it's ```_enter(msg)``` function is called. The optional ```msg``` 
+    > parameter is a dictionary, which is passed along when switching to a new state. Use this to add 
+    > further complexity to your behaviors.
 
-    3. input(event)
-        Hands off _input(event) calls down to the State. These only fire when the State is active.
+2. ```func _exit():```
+    > Similarly, ```_exit()``` is called when the State is being switched away from. Use this to cleanup any
+    > lingering behaviors, signals, or variables you assigned during the State runtime.
 
-    4. update(delta)
-        Hands off _process(delta) calls down to the State. These only fire when the State is active.
+3. ```func input(event):```
+    > Hands off ```_input(event)``` calls down to the State. These only fire when the State is active.
 
-    - Extend these functions to build behaviors in your FSM.
+4. ```func update(delta):```
+    > Hands off ```_process(delta)``` calls down to the State. These only fire when the State is active.
 
-- Two references are passed down to States by the parent StateMachine
-    1. machine
-        A reference to the parent StateMachine. Use this to switch states from within a given State node.
+- Extend these functions to build behaviors in your FSM.
 
-    2. target
-        The object utilizing the state machine. Set this to your Player, Enemy, or whatever the States will target.
+- In addition, two variable references are passed down to States by the parent StateMachine:
+1. ```var machine```
+    > A reference to the parent StateMachine. Use this to switch states from within a given State node.
+
+2. ```var target```
+    > The object utilizing the state machine. Set this to your Player, Enemy, or whatever the States will target. This variable must be explicitly passed to the StateMachine during it's _ready() function.
 
 # Examples
 1. An Idle/Walk State
+
 ```gd
 extends State
 
@@ -81,6 +83,7 @@ func update_anim(strafe):
 ```
 
 2. A Special Interaction State
+
 ```gd
 extends State
 
