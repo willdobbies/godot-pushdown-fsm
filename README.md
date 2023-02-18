@@ -14,19 +14,19 @@ This addon is tested and compatible with Godot 4 Beta 17, and should continue to
 
 - States are where the actual behaviors are defined. They contain a few key functions which are called from the StateMachine:
 
-1. ```func _enter(msg):```
+1. ```func enter(msg={}):```
     > When a State is switched to, it's ```_enter(msg)``` function is called. The optional ```msg``` 
     > parameter is a dictionary, which is passed along when switching to a new state. Use this to add 
     > further complexity to your behaviors.
 
-2. ```func _exit():```
+2. ```func exit():```
     > Similarly, ```_exit()``` is called when the State is being switched away from. Use this to cleanup any
     > lingering behaviors, signals, or variables you assigned during the State runtime.
 
 3. ```func input(event):```
     > Hands off ```_input(event)``` calls down to the State. These only fire when the State is active.
 
-4. ```func update(delta):```
+4. ```func process(delta):```
     > Hands off ```_process(delta)``` calls down to the State. These only fire when the State is active.
 
 - Extend these functions to build behaviors in your FSM.
