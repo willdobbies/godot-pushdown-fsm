@@ -57,8 +57,9 @@ func get_strafe() -> Vector2:
 func input(event) -> void:
 	target.strafe = get_strafe()
 	
-    # If you want accessable methods for all your states, it's useful to put them in the parent
-    # object itself. You could also extend an existing State and leverage a previously written function.
+    # If you want accessable methods for all your states, it's useful to put them
+    # in the parent object itself.
+    # You could also extend an existing State and leverage a previously written function.
 	if(event.is_action_pressed("interact")):
 		await target.interact_nearest()
 
@@ -77,7 +78,7 @@ func update_anim(strafe):
 ```
 
 2. A Special Interaction State
-```
+```gd
 extends State
 
 # Player movement and input is disabled, await completion of terminal input 
