@@ -2,7 +2,10 @@
 A Godot 4 FSM addon which allows you to set, push and pop states.
 
 # Installation
-Clone or download the repo as a .zip, and copy the ```addons/``` directory to the root of your Godot project.
+Clone or download the repo as a .zip, and copy the contents of ```fsm/``` directory to wherever you want.
+TODO: package as addon
+
+This addon is tested and compatible with Godot 4 Beta 17, and should continue to work for future versions.
 
 # Usage
 - This addon provides two new global classes: StateMachine and State.
