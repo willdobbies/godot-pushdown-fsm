@@ -1,57 +1,79 @@
 # Godot Pushdown Fsm
-A Godot 4 FSM addon which allows you to set, push and pop states.
+A Finite State Machine (FSM) addon which allows for standard or pushdown-automata style state handling.
 
 # Installation
-Clone or download the repo as a .zip, and copy the contents of ```fsm/``` directory to wherever you want.
-TODO: package as addon
+Clone or download the repository as a .zip, and copy the contents of fsm/ directory to project addons/ folder. Enable the addon to access the global State/StateMachine classes.
 
-This addon is tested and compatible with Godot 4 Beta 17, and should continue to work for future versions.
+This addon is tested and compatible with Godot 4.2, and should continue to work for future versions.
 
-# Usage
-- This addon provides two new global classes: StateMachine and State.
+# Overview
 
-- The StateMachine object manages the State nodes below it, and can switch between them using the ```set_state```, ```push_state``` and ```pop_state``` methods.
+## StateMachine
+The StateMachine object manages the State nodes below it, and can switch between them using the set_state, push_state and pop_state methods.
 
-- States are where the actual behaviors are defined. They contain a few key functions which are called from the StateMachine:
+- var default_state : State
+	- The first State to enter when starting the machine.
+	- If unset, the first child will be chosen instead.
 
-1. ```func _enter(msg):```
-    > When a State is switched to, it's ```_enter(msg)``` function is called. The optional ```msg``` 
-    > parameter is a dictionary, which is passed along when switching to a new state. Use this to add 
-    > further complexity to your behaviors.
+- var target : Node
+    - The target object that is controlled by the States (your player, enemy, etc.). 
+	- This value is passed down to the child States
+	- By default, this value is set to the container Scene's owner
 
-2. ```func _exit():```
-    > Similarly, ```_exit()``` is called when the State is being switched away from. Use this to cleanup any
-    > lingering behaviors, signals, or variables you assigned during the State runtime.
+- var blackboard : Dictionary
+	- A simple dict object containing generic data.
+	- Set/get data from here to pass data between States.
 
-3. ```func input(event):```
-    > Hands off ```_input(event)``` calls down to the State. These only fire when the State is active.
+- func set_state(state : State)
+	- Exit the current state, and overwrite it with a new one
+	- Automatically triggers enter/exit signals on relevant States
 
-4. ```func update(delta):```
-    > Hands off ```_process(delta)``` calls down to the State. These only fire when the State is active.
+- func push_state(state : State)
+	- Exit the current state, push a new one onto the stack, then enter it
+	- Note: These 'pushed' states should eventually be popped back out.
+	- Automatically triggers enter/exit signals on relevant States
 
-- Extend these functions to build behaviors in your FSM.
+- func pop_state()
+	- Exit and pop the current state, enter the previous State on the stack
+	- Automatically triggers enter/exit signals on relevant States
 
-- In addition, two variable references are passed down to States by the parent StateMachine:
-1. ```var machine```
-    > A reference to the parent StateMachine. Use this to switch states from within a given State node.
+## State
+These are where your main behaviors get implemented. Extend from the base State class to add your own functionality.
 
-2. ```var target```
-    > The object utilizing the state machine. Set this to your Player, Enemy, or whatever the States will target. This variable must be explicitly passed to the StateMachine during it's _ready() function.
+- func enter()
+    - Called when entering into the State. 
+	- Use this to initialize the default settings for your State.
+	- Fetch any relevant blackboard values which were set in previous States.
+
+- func exit()
+    - Called when exiting out from the State. 
+    - Use this to cleanup any lingering behaviors, signals, or variables that were set during it's runtime.
+
+- func input(event)
+	- Delegated call of _input(event) from parent StateMachine.
+	- Only called when State is active
+
+- func process(delta)
+	- Delegated call of _process(event) from parent StateMachine.
+	- Only called when State is active
+
+- var machine : StateMachine
+    - A reference to the parent StateMachine. 
+	- Use set/push/pop state functions from inside States to handle transitions
 
 # Examples
-1. An Idle/Walk State
+1. An Idle/Walk State. Updates the target object's sprite direction and animation.
 
 ```gd
 extends State
 
-func enter(msg = {}):
-    # Use asserts to confirm the target object fits with your code requirements
-	assert(target is ActiveCharacter)
-	target.strafe_changed.connect(update_anim)
-	update_anim(target.strafe)
+func enter():
+	# Use asserts to confirm the target object fits with your code requirements
+	assert(target is CharacterBody2D)
+	assert(target.get("sprite") is AnimatedSprite2D)
 
 func exit():
-	target.strafe_changed.disconnect(update_anim)
+	target.velocity = Vector2.ZERO
 
 func get_strafe() -> Vector2:
 	return Vector2(
@@ -59,51 +81,85 @@ func get_strafe() -> Vector2:
 		Input.get_action_strength("move_down") - Input.get_action_strength("move_up")
 	)
 
-func input(event) -> void:
+func input(event):
 	target.strafe = get_strafe()
-	
-    # If you want accessable methods for all your states, it's useful to put them
-    # in the parent object itself.
-    # You could also extend an existing State and leverage a previously written function.
-	if(event.is_action_pressed("interact")):
-		await target.interact_nearest()
 
-func get_anim_dir(strafe):
-	if(strafe.x == 0 and strafe.y > 0): return "_d"
-	if(strafe.y < 0): return "_u"
-	return ""
+func is_moving():
+	return strafe != Vector2.ZERO
 
-# This animation code is nice and contained within this single state.
-func update_anim(strafe):
-	var is_moving = strafe != Vector2.ZERO
-	var anim = "walk" if is_moving else "idle"
-	anim += get_anim_dir(target.look)
-	
+func process(delta):
+	var anim = "walk" if is_moving() else "idle"
+	target.sprite.flip_h = strafe.x < 0
 	target.sprite.play(anim)
 ```
 
-2. A Special Interaction State
+2. An Interaction state with a "Terminal" object. Disable control until the Terminal emits it's "control_finished" signal. Push/pop state, utilizes blackboard values.
 
 ```gd
 extends State
 
-# Player movement and input is disabled, await completion of terminal input 
-# before restoring control
+var _terminal_control_finished = false
 
-func enter(msg={}):
+func enter():
 	assert(target is Active)
-	var terminal = msg.get("terminal",null)
+	var terminal = machine.blackboard.get("terminal", null)
 	
 	if(not terminal):
 		machine.pop_state()
-		return
-	
-	target.sprite.play("typing")
-	await terminal.control_finished
-	machine.pop_state()
+	else:
+		terminal.control_finished.connect(func():
+			_terminal_control_finished = true
+		)
+		
+		target.sprite.play("typing")
+		terminal.start_control()
+
+func exit():
+	target.sprite.stop()
+
+func process(delta):
+	if(finished):
+		machine.pop_state()
 ```
 
-# Notes
-- This is my personal library that I use for my games, and is WIP. (Use at your own risk).
-- If you find any major bugs or problems, let me know in the Github Issues and I'll try to fix them.
-- There is a danger of things breaking if you don't keep track of how many states you've pushed or popped, and I'm pretty sure my implementation breaks some rules about how the 'pushdown automata' strategy should work. Therefore, if you want the most vanilla FSM experience, just stick with the 'set_state' function.
+3. A stunned state, where the character stays motionless for N seconds. Push/pop state, utilizes blackboard values.
+
+```gd 
+extends State
+
+# Tracks total stun time before leaving state
+var stun_time = 0
+
+func enter():
+	stun_time = machine.blackboard.get("stun_time", 3)
+	machine.blackboard.erase("stun_time")
+	target.sprite.play("stun")
+	target.set_collisions(false)
+
+func exit():
+	stun_time = 0
+	target.set_collisions(true)
+
+func process(delta):
+	stun_time -= delta
+	if(stun_time < 0):
+		pop_state()
+```
+
+4. A random selection state, where we immediately switch to a random option from the exported list. 
+```gd
+extends State
+
+@export var states : Array[State]
+
+func enter(args:={}):
+	if(states.is_empty()):
+		machine.pop_state()
+	
+	var rand_state = states.pick_random()
+	
+	if(not rand_state):
+		machine.pop_state()
+	else:
+		machine.set_state(rand_state)
+```
