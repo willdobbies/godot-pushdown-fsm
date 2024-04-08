@@ -1,32 +1,48 @@
 @icon("./state.png")
-class_name State 
+class_name State
 extends Node
 
-# enable for additional debug messages checked this object
-@export var editor_debug : bool
+## An individual FSM State node, to be processed by a StateMachine
 
-# A reference to the root StateMachine, passed down during initialization
-# Often used to switch between states (using state_set, state_push, etc)
+## A reference to the root StateMachine, passed down during initialization.
 var machine : StateMachine
 
-# A reference to the object that is making use of the state machine
-# This reference is passed down by the root StateMachine
-var target : Object
+## A reference to the object that is making use of the state machine.
+## This reference is passed down by the root StateMachine
+var target : Node
 
-# Called when parent StateMachine enters this State
-# Extend for state's initializer
-func enter(msg = {}):
+## Emitted when enter() function fully completes.
+## This is automatically emitted by the root StateMachine
+signal entered()
+
+## Emitted when exit() function fully completes.
+## This is automatically emitted by the root StateMachine
+signal exited()
+
+## Called when parent StateMachine enters this State.
+## Extend to define the State's initializer.
+func enter() -> void:
 	pass
 
-# Called when parent StateMachine exits this State
-# Extend for state's cleanup 
-func exit():
+## Called when parent StateMachine exits this State.
+## Extend to define the State's cleanup.
+func exit() -> void:
 	pass
 
-# All methods below are virtual and called by the state machine.
+## When State is active, executed during parent machine's _input() call.
 func input(event) -> void:
 	pass
 
-# When active, executed during parent machine's _update()
+## When State is active, executed during parent machine's _process() call.
 func process(delta) -> void:
 	pass
+
+func set_state(state : State) -> void:
+	machine.set_state(state)
+
+func set_state_name(state : String) -> void:
+	machine.set_state_name(state)
+
+## Returns whether the state is currently seleted by the main machine
+func _is_active() -> bool:
+	return machine.cur_state == self
